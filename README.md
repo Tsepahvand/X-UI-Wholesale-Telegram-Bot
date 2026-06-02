@@ -48,6 +48,13 @@ chmod +x update.sh
 ./update.sh
 ```
 
+For servers where git update is not preferred, use remote update with curl (no directory removal):
+
+```bash
+cd /path/to/X-UI-Wholesale-Telegram-Bot
+curl -fsSL https://raw.githubusercontent.com/Tsepahvand/X-UI-Wholesale-Telegram-Bot/main/remote-update.sh | bash -s -- main "$(pwd)"
+```
+
 If you run with systemd:
 
 ```bash
@@ -106,6 +113,7 @@ Proxy is used only for Telegram API traffic; panel API always stays direct.
 |--------|--------|
 | `./install.sh` | setup venv + deps + `.env` |
 | `./update.sh` | update to latest version and keep `.env` + `bot.db` |
+| `./remote-update.sh` | update from GitHub tarball and keep `.env` + `bot.db` |
 | `./enable-systemd.sh` | migrate manual run to systemd mode |
 | `./run.sh` | foreground run |
 | `nohup ./run.sh > bot.log 2>&1 &` | background run |
@@ -174,7 +182,7 @@ dmesg -T | rg -i "killed process|out of memory|oom"
 ├── telegram_http.py
 ├── handlers/
 ├── deploy/systemd/
-├── install.sh / update.sh / enable-systemd.sh / run.sh / setup.sh
+├── install.sh / update.sh / remote-update.sh / enable-systemd.sh / run.sh / setup.sh
 ├── .env.example
 └── requirements.txt
 ```

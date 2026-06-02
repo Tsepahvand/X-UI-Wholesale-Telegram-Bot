@@ -60,6 +60,7 @@ fi
 # ── executable scripts ─────────────────────────────────────────
 chmod +x run.sh 2>/dev/null || true
 chmod +x update.sh 2>/dev/null || true
+chmod +x remote-update.sh 2>/dev/null || true
 chmod +x enable-systemd.sh 2>/dev/null || true
 chmod +x deploy/systemd/install-service.sh 2>/dev/null || true
 

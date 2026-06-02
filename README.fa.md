@@ -50,6 +50,15 @@ chmod +x update.sh
 ./update.sh
 ```
 
+اگر نخواستید با git آپدیت کنید، با `curl` هم می‌توانید بدون حذف دایرکتوری پروژه آپدیت کنید:
+
+```bash
+cd /path/to/X-UI-Wholesale-Telegram-Bot
+curl -fsSL https://raw.githubusercontent.com/Tsepahvand/X-UI-Wholesale-Telegram-Bot/main/remote-update.sh | bash -s -- main "$(pwd)"
+```
+
+این روش فایل‌های جدید را جایگزین می‌کند و `.env` و `bot.db` را نگه می‌دارد.
+
 اگر با systemd اجرا می‌کنید:
 
 ```bash
