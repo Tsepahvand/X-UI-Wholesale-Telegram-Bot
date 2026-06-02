@@ -65,24 +65,23 @@ def get_state(context: ContextTypes.DEFAULT_TYPE) -> State:
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     clear_state(context)
     user = update.effective_user
-    # ادمین (.env) همیشه اولویت دارد — حتی اگر رکورد قدیمی فروشنده در DB باشد
     if db.is_admin(user.id):
         await update.message.reply_text(
-            "👋 سلام ادمین!\nاز منوی زیر مدیریت عمده‌فروشان را انجام دهید.",
+            "👋 سلام Admin!\nاز menu زیر برای مدیریت wholesale dealer استفاده کنید.",
             reply_markup=admin_menu(),
         )
         return
 
     dealer = db.get_dealer_by_telegram(user.id)
     if not dealer:
-        await update.message.reply_text("⛔ شما دسترسی به این ربات ندارید.")
+        await update.message.reply_text("⛔ Access ندارید. شما به این bot مجاز نیستید.")
         return
     if dealer.is_blocked:
-        await update.message.reply_text("🚫 حساب شما موقتاً مسدود شده است.")
+        await update.message.reply_text("🚫 حساب شما temporary block شده است.")
         return
 
     await update.message.reply_text(
-        f"👋 سلام {dealer.name}!\nاز منوی زیر استفاده کنید.",
+        f"👋 سلام {dealer.name}!\nاز menu زیر استفاده کنید.",
         reply_markup=dealer_menu(),
     )
 
@@ -91,9 +90,9 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     clear_state(context)
     user = update.effective_user
     if db.is_admin(user.id):
-        await update.message.reply_text("انصراف.", reply_markup=admin_menu())
+        await update.message.reply_text("Cancelled.", reply_markup=admin_menu())
     else:
-        await update.message.reply_text("انصراف.", reply_markup=dealer_menu())
+        await update.message.reply_text("Cancelled.", reply_markup=dealer_menu())
 
 
 def require_dealer(user_id: int):

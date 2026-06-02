@@ -72,17 +72,17 @@ async def route_message(update, context):
         return
     dealer = db.get_dealer_by_telegram(user.id)
     if dealer and dealer.is_blocked:
-        await update.message.reply_text("🚫 حساب شما موقتاً مسدود شده است.")
+        await update.message.reply_text("🚫 حساب شما temporary block شده است.")
         return
     if not dealer:
         inactive = db.get_dealer_by_telegram_any(user.id)
         if inactive and not inactive.is_active:
             await update.message.reply_text(
-                "⛔ دسترسی عمده‌فروشی شما قطع شده است.\n"
-                "اگر ادمین هستید، آیدی خود را در `.env` → `ADMIN_ID` بگذارید و `/start` بزنید."
+                "⛔ دسترسی wholesale شما revoke شده است.\n"
+                "اگر Admin هستید، ID خود را در `.env` -> `ADMIN_ID` بگذارید و `/start` بزنید."
             )
         else:
-            await update.message.reply_text("⛔ شما دسترسی به این ربات ندارید.")
+            await update.message.reply_text("⛔ Access ندارید. شما مجاز به استفاده از bot نیستید.")
 
 
 async def route_callback(update, context):
@@ -113,24 +113,24 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
 
 def _print_telegram_help():
     print(
-        "\n❌ اتصال به Telegram برقرار نشد (api.telegram.org).\n\n"
-        "در فایل .env پروکسی را فعال کنید:\n\n"
-        "  # SOCKS5 بدون یوزر/پس:\n"
+        "\n❌ Telegram connection failed (api.telegram.org).\n\n"
+        "Set proxy in your .env:\n\n"
+        "  # SOCKS5 without auth:\n"
         "  TELEGRAM_PROXY_ENABLED=true\n"
         "  TELEGRAM_PROXY_TYPE=socks5\n"
         "  TELEGRAM_PROXY_HOST=127.0.0.1\n"
         "  TELEGRAM_PROXY_PORT=1080\n\n"
-        "  # SOCKS5 با یوزر/پس:\n"
+        "  # SOCKS5 with username/password:\n"
         "  TELEGRAM_PROXY_ENABLED=true\n"
         "  TELEGRAM_PROXY_HOST=proxy.example.com\n"
         "  TELEGRAM_PROXY_PORT=1080\n"
         "  TELEGRAM_PROXY_USER=myuser\n"
         "  TELEGRAM_PROXY_PASS=mypassword\n\n"
-        "  # یا URL کامل:\n"
+        "  # Or full URL:\n"
         "  TELEGRAM_PROXY=socks5h://user:pass@host:1080\n\n"
-        "  نکته: برای فیلتر تلگرام از socks5h استفاده کنید (خودکار فعال است).\n"
-        "  TELEGRAM_PROXY_REMOTE_DNS=false  → socks5 معمولی\n\n"
-        "سپس: ./run.sh\n"
+        "  Tip: for restricted Telegram routes, use socks5h (default).\n"
+        "  TELEGRAM_PROXY_REMOTE_DNS=false -> plain socks5\n\n"
+        "Then run: ./run.sh\n"
     )
 
 
@@ -158,7 +158,7 @@ def run_polling_with_retry():
 
 def main():
     if not config.BOT_TOKEN:
-        print("❌ BOT_TOKEN در فایل .env تنظیم نشده است.")
+        print("❌ BOT_TOKEN is not set in .env.")
         sys.exit(1)
 
     db.init_db()

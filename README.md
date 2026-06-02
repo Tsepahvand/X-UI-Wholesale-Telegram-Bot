@@ -1,35 +1,36 @@
 # X-UI Wholesale Telegram Bot
 
-ربات تلگرامی برای مدیریت **عمده‌فروشان** پنل‌های **X-UI** — بدون دادن دسترسی مستقیم به پنل.
+یک Telegram bot برای مدیریت wholesale dealer روی پنل‌های X-UI، بدون دادن direct panel access.
+
+For Persian explain click here: [README فارسی](README.fa.md)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-## پنل‌های پشتیبانی‌شده
+## Supported Panels
 
-| پنل | وضعیت | یادداشت |
+| Panel | Status | Note |
 |-----|--------|---------|
-| [**3X-UI**](https://github.com/MHSanaei/3x-ui) | ✅ پشتیبانی کامل | نسخه‌های 2.x / 3.x با API استاندارد `panel/api/inbounds` |
-| سایر فورک‌های X-UI | ⚠️ ممکن است کار کند | در صورت سازگاری API با 3X-UI |
+| [**3X-UI**](https://github.com/MHSanaei/3x-ui) | ✅ Full support | Compatible with standard `panel/api/inbounds` API |
+| Other X-UI forks | ⚠️ Maybe works | If API behavior matches 3X-UI |
 
 ---
 
-## این پروژه برای چیست؟
+## Project Use Case
 
-| نقش | دسترسی |
+| Role | Access Scope |
 |-----|--------|
-| **ادمین** | فروشندگان، اینباندها، سهمیه GB، روز اعتبار، بلاک، حذف |
-| **عمده‌فروش** | ساخت / تمدید / بررسی کانفیگ، حساب من |
+| **Admin** | dealer management, inbound assignment, GB quota, day-limit, block/delete |
+| **Dealer** | create / renew / check config, account status |
 
-ربات از **API پنل X-UI** استفاده می‌کند؛ سهمیه‌ها و فروشندگان در **SQLite** (`bot.db`) ذخیره می‌شوند.
+Data is stored in local SQLite (`bot.db`) and panel operations run through X-UI API.
 
 ---
 
-## نصب سریع
+## Quick Start
 
 ```bash
 git clone https://github.com/Tsepahvand/X-UI-Wholesale-Telegram-Bot.git
 cd X-UI-Wholesale-Telegram-Bot
-
 chmod +x install.sh run.sh
 ./install.sh
 nano .env
@@ -38,21 +39,38 @@ nano .env
 
 ---
 
-## تنظیمات `.env`
+## Update to Latest Version
 
-نمونه: [`.env.example`](.env.example)
+Use this command to update code while keeping old `.env` and `bot.db`:
+
+```bash
+chmod +x update.sh
+./update.sh
+```
+
+If you run with systemd:
+
+```bash
+sudo systemctl restart xui-wholesale-bot
+```
+
+---
+
+## `.env` Configuration
+
+Template: [`.env.example`](.env.example)
 
 ```env
 BOT_TOKEN=...
-ADMIN_ID=111111111              # یک ادمین
-# ADMIN_ID=111,222,333          # چند ادمین با کاما
+ADMIN_ID=111111111              # single admin
+# ADMIN_ID=111,222,333          # multiple admins
 PANEL_URL=https://panel.example.com/secret-path
 PANEL_USER=admin
 PANEL_PASS=...
 SUB_BASE_URL=https://panel.example.com/sub/
 ```
 
-### پروکسی تلگرام (اختیاری)
+### Telegram Proxy (Optional)
 
 ```env
 TELEGRAM_PROXY_ENABLED=true
@@ -62,51 +80,74 @@ TELEGRAM_PROXY_PORT=1080
 TELEGRAM_PROXY_REMOTE_DNS=true
 ```
 
-> پروکسی **فقط برای تلگرام** است؛ اتصال **پنل** همیشه مستقیم است.  
-> `getUpdates` و `sendMessage` هر دو از همان پروکسی استفاده می‌کنند.
+Proxy is used only for Telegram API traffic; panel API always stays direct.
 
 ---
 
-## اجرا
+## Run Modes
 
-| دستور | کاربرد |
+| Command | Purpose |
 |--------|--------|
-| `./install.sh` | نصب (venv + وابستگی‌ها + `.env`) |
-| `./run.sh` | اجرای ربات |
-| `nohup ./run.sh > bot.log 2>&1 &` | اجرا در پس‌زمینه |
+| `./install.sh` | setup venv + deps + `.env` |
+| `./update.sh` | update to latest version and keep `.env` + `bot.db` |
+| `./run.sh` | foreground run |
+| `nohup ./run.sh > bot.log 2>&1 &` | background run |
 
-> فقط **یک** instance همزمان — دو بار اجرا → خطای `409 Conflict`.
+Use only one instance at a time; multiple polling instances cause `409 Conflict`.
+
+### Stable VPS Mode (Recommended)
+
+Use systemd for auto-restart when process exits or gets killed:
+
+```bash
+chmod +x deploy/systemd/install-service.sh
+sudo ./deploy/systemd/install-service.sh
+sudo systemctl status xui-wholesale-bot
+```
+
+Live logs:
+
+```bash
+journalctl -u xui-wholesale-bot -f
+```
+
+Restart:
+
+```bash
+sudo systemctl restart xui-wholesale-bot
+```
+
+Check OOM/system kill:
+
+```bash
+dmesg -T | rg -i "killed process|out of memory|oom"
+```
 
 ---
 
-## امکانات
+## Features
 
-### ادمین
-- ➕ افزودن عمده‌فروش (اینباند + سقف GB + **روز اعتبار هر کانفیگ**)
-- 🔍 جستجو: بلاک، خاموش کردن همه، ± سهمیه حجم
-- 📡 **مدیریت اینباندها** (افزودن / ویرایش نام، سقف، روز / حذف)
-- 🗑 **حذف کامل فروشنده** از دیتابیس ربات
-- 📋 لیست فروشندگان
-- چند ادمین با `ADMIN_ID` (با کاما)
+### Admin
+- add dealer with inbound + GB quota + config day-limit
+- dealer search & actions: block, disable all, quota +/- 
+- inbound management: add/edit/remove assigned inbounds
+- hard delete dealer from bot database
+- multi-admin support via `ADMIN_ID`
 
-### عمده‌فروش
-- 🆕 ساخت کانفیگ (حجم، نام، `/random`) → QR + لینک + ساب
-- ♻️ تمدید حجم
-- 🔎 بررسی (حجم، انقضا، آخرین اتصال، خاموش/حذف)
-- 👤 حساب من
+### Dealer
+- create config (size + name or `/random`) with QR/config/sub links
+- renew config traffic
+- check status (traffic, expiry, last online, enable/disable/delete)
+- account summary
 
-### اعتبار زمانی کانفیگ
-- هنگام دادن اینباند: تعداد **روز** (مثلاً `30`) یا `0` = نامحدود
-- در پنل: **Start After First Use** (با `expiryTime` منفی)
-- ویرایش روز فقط روی **کانفیگ‌های جدید** اثر دارد
-
-### نام کانفیگ
-- در لینک: `#InboundRemark-Name`
-- در پنل: email با پیشوند `-`
+### Expiry Logic
+- assign `days` per inbound (`0` means unlimited)
+- in panel, day-limited clients are created as **Start After First Use**
+- changing day-limit affects only new clients
 
 ---
 
-## ساختار پروژه
+## Project Structure
 
 ```
 ├── main.py
@@ -115,41 +156,29 @@ TELEGRAM_PROXY_REMOTE_DNS=true
 ├── panel_client.py
 ├── telegram_http.py
 ├── handlers/
-├── install.sh / run.sh / setup.sh
+├── deploy/systemd/
+├── install.sh / update.sh / run.sh / setup.sh
 ├── .env.example
 └── requirements.txt
 ```
 
 ---
 
-## به‌روزرسانی‌ها
+## Recent Updates
 
-### نسخه اخیر
+### Added
+- per-inbound config day-limit (`0 = unlimited`)
+- Start After First Use support for day-limited clients
+- inbound management UI in dealer search flow
+- hard delete dealer from `bot.db`
+- dynamic multi-admin reload from `.env`
+- systemd deployment with auto-restart
 
-**امکانات جدید**
-- روز اعتبار هر کانفیگ هنگام تخصیص اینباند (`0` = نامحدود)
-- فعال‌سازی **Start After First Use** در پنل برای کانفیگ‌های محدود به روز
-- منوی **مدیریت اینباندها** در جستجوی فروشنده (افزودن / ویرایش / حذف)
-- حذف کامل فروشنده از `bot.db` (نه فقط غیرفعال‌سازی)
-- چند ادمین در `ADMIN_ID`
-- پروکسی SOCKS فقط برای تلگرام؛ پنل مستقیم
-
-**رفع باگ‌ها**
-- پروکسی سراسری باعث HTML به‌جای JSON پنل می‌شد → جدا شد
-- `getUpdates` بدون پروکسی قطع می‌شد → `get_updates_proxy` اضافه شد
-- قطع دسترسی فروشنده ولی رکورد در DB + ادمین `.env` کار نمی‌کرد → حذف واقعی + خواندن زنده `ADMIN_ID`
-- `lastOnline` پنل به‌صورت dict — نمایش آخرین اتصال اصلاح شد
-
----
-
-## English
-
-Telegram bot for X-UI wholesale resellers. Admin manages dealers, inbounds, GB quota, and per-config day limits. Optional SOCKS5 for Telegram only; panel API stays direct.
-
-```bash
-git clone https://github.com/Tsepahvand/X-UI-Wholesale-Telegram-Bot.git
-cd X-UI-Wholesale-Telegram-Bot && ./install.sh && nano .env && ./run.sh
-```
+### Fixed
+- panel calls accidentally going through global proxy
+- `getUpdates` proxy path instability
+- dealer revoke/admin-id edge cases
+- `lastOnline` parsing compatibility for dict format
 
 ---
 

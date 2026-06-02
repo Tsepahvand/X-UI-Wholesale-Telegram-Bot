@@ -25,7 +25,6 @@ class PanelClient:
     def __init__(self):
         self.session = requests.Session()
         self.session.verify = True
-        # پنل همیشه مستقیم — پروکسی فقط برای تلگرام است (نه ALL_PROXY سراسری)
         self.session.trust_env = False
         self.session.proxies = {"http": None, "https": None}
         self._csrf: Optional[str] = None

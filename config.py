@@ -9,7 +9,7 @@ BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 
 
 def parse_admin_ids(raw: str) -> frozenset[int]:
-    """چند ادمین با کاما: ADMIN_ID=111,222,333"""
+    """Parse comma-separated admin IDs."""
     ids: set[int] = set()
     for part in raw.replace("،", ",").split(","):
         part = part.strip().strip('"').strip("'")
@@ -25,12 +25,11 @@ def parse_admin_ids(raw: str) -> frozenset[int]:
 
 
 def admin_ids() -> frozenset[int]:
-    """هر بار از .env می‌خواند — بعد از تغییر ADMIN_ID نیاز به ری‌استارت نیست."""
+    """Reload ADMIN_ID from .env each time."""
     load_dotenv(override=True)
     return parse_admin_ids(os.getenv("ADMIN_ID", "7156306196"))
 
 
-# برای importهای قدیمی / لاگ استارت
 ADMIN_IDS = admin_ids()
 ADMIN_ID = next(iter(ADMIN_IDS))
 
@@ -42,7 +41,6 @@ if SUB_BASE_URL:
     SUB_BASE_URL += "/"
 DATABASE_PATH = os.getenv("DATABASE_PATH", "bot.db")
 
-# سرور Bot API اختصاصی (اختیاری)
 TELEGRAM_API_BASE = os.getenv("TELEGRAM_API_BASE", "").strip().rstrip("/") or None
 
 GB = 1073741824
@@ -53,12 +51,12 @@ def _env_bool(key: str, default: bool = False) -> bool:
 
 
 def _socks_remote_dns() -> bool:
-    """socks5h = DNS از طریق پروکسی (برای api.telegram.org فیلترشده لازم است)."""
+    """Return whether SOCKS proxy should resolve DNS remotely."""
     return _env_bool("TELEGRAM_PROXY_REMOTE_DNS", True)
 
 
 def _normalize_socks_scheme(url_or_scheme: str) -> str:
-    """socks5 → socks5h وقتی DNS ریموت فعال است."""
+    """Convert socks5 to socks5h when remote DNS is enabled."""
     if not _socks_remote_dns():
         return url_or_scheme
     if url_or_scheme == "socks5":
@@ -69,15 +67,7 @@ def _normalize_socks_scheme(url_or_scheme: str) -> str:
 
 
 def build_telegram_proxy() -> str | None:
-    """
-    ساخت URL پروکسی تلگرام.
-
-    اولویت:
-    1) TELEGRAM_PROXY=...  (URL کامل)
-    2) TELEGRAM_PROXY_ENABLED=true + HOST/PORT/USER/PASS
-
-    نکته: برای تلگرام فیلترشده معمولاً socks5h لازم است (نه socks5).
-    """
+    """Build Telegram proxy URL from direct URL or structured fields."""
     direct = os.getenv("TELEGRAM_PROXY", "").strip()
     if direct:
         return _normalize_socks_scheme(direct)
@@ -104,7 +94,7 @@ TELEGRAM_PROXY = build_telegram_proxy()
 
 
 def proxy_log_label(proxy_url: str | None) -> str:
-    """برای لاگ — پسورد مخفی می‌شود."""
+    """Mask password in proxy URL for logs."""
     if not proxy_url:
         return "none"
     if "@" in proxy_url and "://" in proxy_url:

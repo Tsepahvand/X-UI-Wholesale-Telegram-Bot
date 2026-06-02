@@ -33,6 +33,9 @@ temp/
 # Cursor (local IDE)
 .cursor/
 
+# Runtime output
+nohup.out
+
 # Local-only — not published to GitHub
 API-DOCS.md
 scripts/

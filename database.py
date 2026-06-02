@@ -23,7 +23,7 @@ class DealerInbound:
     display_name: str
     quota_bytes: int
     used_bytes: int
-    config_days: int  # 0 = نامحدود
+    config_days: int
 
 
 @dataclass
@@ -269,7 +269,7 @@ def update_dealer_inbound(
 def set_dealer_inbound_quota(
     dealer_id: int, inbound_id: int, quota_bytes: int
 ) -> tuple[bool, str]:
-    """تنظیم سقف کل؛ باید از used_bytes بیشتر یا مساوی باشد."""
+    """Set total quota and keep it >= used_bytes."""
     ib = get_dealer_inbound(dealer_id, inbound_id)
     if not ib:
         return False, "اینباند یافت نشد."
@@ -437,13 +437,11 @@ def set_dealer_blocked(dealer_id: int, blocked: bool):
 
 
 def revoke_dealer(dealer_id: int):
-    """غیرفعال کردن — رکورد در DB می‌ماند (سازگاری قدیمی)."""
     with _conn() as conn:
         conn.execute("UPDATE dealers SET is_active = 0 WHERE id = ?", (dealer_id,))
 
 
 def delete_dealer(dealer_id: int) -> bool:
-    """حذف کامل فروشنده + اینباندها و کانفیگ‌های ثبت‌شده در ربات."""
     with _conn() as conn:
         cur = conn.execute("DELETE FROM dealers WHERE id = ?", (dealer_id,))
         return cur.rowcount > 0
