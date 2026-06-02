@@ -166,7 +166,7 @@ def main():
     try:
         panel.login()
         logger.info("Panel login OK")
-    except PanelError as e:
+    except (PanelError, RequestException) as e:
         logger.warning("Panel login failed at startup: %s", e)
 
     logger.info(
