@@ -59,6 +59,8 @@ fi
 
 # ── executable scripts ─────────────────────────────────────────
 chmod +x run.sh 2>/dev/null || true
+chmod +x update.sh 2>/dev/null || true
+chmod +x enable-systemd.sh 2>/dev/null || true
 chmod +x deploy/systemd/install-service.sh 2>/dev/null || true
 
 echo ""
@@ -72,6 +74,8 @@ echo "       ./run.sh"
 echo ""
 echo "Stable deployment (recommended on VPS):"
 echo "  sudo ./deploy/systemd/install-service.sh"
+echo "One-command migration from manual run to systemd:"
+echo "  ./enable-systemd.sh"
 echo ""
 echo "Background run (optional):"
 echo "  nohup ./run.sh > bot.log 2>&1 &"

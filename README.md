@@ -56,6 +56,22 @@ sudo systemctl restart xui-wholesale-bot
 
 ---
 
+## Migrate Manual Run to systemd (One Command)
+
+If you were running with `./run.sh` or `nohup`, use this command once:
+
+```bash
+chmod +x enable-systemd.sh
+./enable-systemd.sh
+```
+
+This script:
+- stops manual bot processes
+- installs/enables systemd service
+- starts bot under `xui-wholesale-bot`
+
+---
+
 ## `.env` Configuration
 
 Template: [`.env.example`](.env.example)
@@ -90,6 +106,7 @@ Proxy is used only for Telegram API traffic; panel API always stays direct.
 |--------|--------|
 | `./install.sh` | setup venv + deps + `.env` |
 | `./update.sh` | update to latest version and keep `.env` + `bot.db` |
+| `./enable-systemd.sh` | migrate manual run to systemd mode |
 | `./run.sh` | foreground run |
 | `nohup ./run.sh > bot.log 2>&1 &` | background run |
 
@@ -157,7 +174,7 @@ dmesg -T | rg -i "killed process|out of memory|oom"
 ├── telegram_http.py
 ├── handlers/
 ├── deploy/systemd/
-├── install.sh / update.sh / run.sh / setup.sh
+├── install.sh / update.sh / enable-systemd.sh / run.sh / setup.sh
 ├── .env.example
 └── requirements.txt
 ```

@@ -58,6 +58,22 @@ sudo systemctl restart xui-wholesale-bot
 
 ---
 
+## مهاجرت از اجرای دستی به systemd (با یک دستور)
+
+اگر قبلاً با `./run.sh` یا `nohup` اجرا می‌کردید، یک بار این دستور را بزنید:
+
+```bash
+chmod +x enable-systemd.sh
+./enable-systemd.sh
+```
+
+این اسکریپت:
+- اجرای دستی را متوقف می‌کند
+- سرویس systemd را نصب/فعال می‌کند
+- ربات را با سرویس `xui-wholesale-bot` بالا می‌آورد
+
+---
+
 ## تنظیمات اصلی `.env`
 
 ```env
