@@ -91,6 +91,25 @@ def init_db():
             """
         )
         _migrate_dealer_inbounds(conn)
+        _migrate_bot_settings(conn)
+
+
+def _migrate_bot_settings(conn: sqlite3.Connection):
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS bot_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        )
+        """
+    )
+    from bot_settings import DEFAULTS
+
+    for key, value in DEFAULTS.items():
+        conn.execute(
+            "INSERT OR IGNORE INTO bot_settings (key, value) VALUES (?, ?)",
+            (key, value),
+        )
 
 
 def _migrate_dealer_inbounds(conn: sqlite3.Connection):
@@ -98,6 +117,27 @@ def _migrate_dealer_inbounds(conn: sqlite3.Connection):
     if "config_days" not in cols:
         conn.execute(
             "ALTER TABLE dealer_inbounds ADD COLUMN config_days INTEGER NOT NULL DEFAULT 0"
+        )
+
+
+def get_setting(key: str, default: str = "") -> str:
+    with _conn() as conn:
+        row = conn.execute(
+            "SELECT value FROM bot_settings WHERE key = ?", (key,)
+        ).fetchone()
+    if row:
+        return str(row["value"])
+    return default
+
+
+def set_setting(key: str, value: str):
+    with _conn() as conn:
+        conn.execute(
+            """
+            INSERT INTO bot_settings (key, value) VALUES (?, ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value
+            """,
+            (key, value),
         )
 
 
@@ -386,6 +426,15 @@ def dealer_config_name_exists(dealer_id: int, display_name: str) -> bool:
         row = conn.execute(
             "SELECT 1 FROM dealer_configs WHERE dealer_id = ? AND remark = ? LIMIT 1",
             (dealer_id, display_name),
+        ).fetchone()
+        return row is not None
+
+
+def dealer_sub_id_exists(dealer_id: int, sub_id: str) -> bool:
+    with _conn() as conn:
+        row = conn.execute(
+            "SELECT 1 FROM dealer_configs WHERE dealer_id = ? AND sub_id = ? LIMIT 1",
+            (dealer_id, sub_id),
         ).fetchone()
         return row is not None
 

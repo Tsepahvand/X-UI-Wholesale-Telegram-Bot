@@ -84,6 +84,10 @@ fi
 echo "==> Installing/updating dependencies"
 bash "$TARGET_DIR/install.sh"
 
+echo "==> Migrating database (new tables/columns, bot_settings)"
+chmod +x "$TARGET_DIR/migrate_db.sh" 2>/dev/null || true
+bash "$TARGET_DIR/migrate_db.sh"
+
 echo ""
 echo "✅ Remote update finished."
 echo "Next:"

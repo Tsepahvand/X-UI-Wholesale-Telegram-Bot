@@ -19,6 +19,7 @@ import config
 import database as db
 from telegram_http import configure_application_builder, log_proxy_mode
 from handlers.admin import handle_admin_callback, handle_admin_message
+from handlers.admin_settings import handle_admin_settings_callback
 from handlers.common import cancel, start
 from handlers.dealer_ops import handle_dealer_callback, handle_dealer_message, handle_random_command
 from panel_client import PanelError, panel
@@ -86,6 +87,8 @@ async def route_message(update, context):
 
 
 async def route_callback(update, context):
+    if await handle_admin_settings_callback(update, context):
+        return
     if await handle_admin_callback(update, context):
         return
     await handle_dealer_callback(update, context)

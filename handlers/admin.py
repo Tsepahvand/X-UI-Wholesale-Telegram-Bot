@@ -3,6 +3,7 @@ from telegram.ext import ContextTypes
 
 import config
 import database as db
+from handlers.admin_settings import handle_admin_settings_message
 from handlers.common import CANCEL_TEXT, State, clear_state, set_state
 from handlers.helpers import disable_all_dealer_configs
 from keyboards import (
@@ -45,6 +46,9 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
             "🆔 آیدی عددی تلگرام را بفرستید:",
             reply_markup=cancel_kb(),
         )
+        return True
+
+    if await handle_admin_settings_message(update, context):
         return True
 
     if text == "📋 لیست عمده‌فروشان":

@@ -55,6 +55,10 @@ fi
 echo "==> Reinstalling dependencies"
 bash "$ROOT_DIR/install.sh"
 
+echo "==> Migrating database (new tables/columns, bot_settings)"
+chmod +x "$ROOT_DIR/migrate_db.sh" 2>/dev/null || true
+bash "$ROOT_DIR/migrate_db.sh"
+
 echo ""
 echo "✅ Update finished."
 echo "Next:"

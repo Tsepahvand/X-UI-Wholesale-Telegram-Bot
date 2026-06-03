@@ -301,6 +301,13 @@ def random_sub_id(length: int = 16) -> str:
     return "".join(secrets.choice(alphabet) for _ in range(length))
 
 
+def random_sub_id_in_range(min_len: int, max_len: int) -> str:
+    lo = max(4, min_len)
+    hi = max(lo, max_len)
+    length = secrets.randbelow(hi - lo + 1) + lo
+    return random_sub_id(length)
+
+
 def random_client_name() -> str:
     return f"user-{random_sub_id(6)}"
 

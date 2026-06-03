@@ -4,6 +4,7 @@ from typing import Optional
 import qrcode
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
 
+import bot_settings as bs
 from database import DealerInbound
 
 
@@ -11,17 +12,109 @@ def admin_menu() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         [
             ["➕ افزودن عمده‌فروش", "🔍 جستجوی عمده‌فروش"],
-            ["📋 لیست عمده‌فروشان"],
+            ["📋 لیست عمده‌فروشان", "⚙️ تنظیمات ربات"],
         ],
         resize_keyboard=True,
     )
 
 
 def dealer_menu() -> ReplyKeyboardMarkup:
-    return ReplyKeyboardMarkup(
-        [["🆕 ساخت", "♻️ تمدید"], ["🔎 بررسی", "👤 حساب من"]],
-        resize_keyboard=True,
+    return ReplyKeyboardMarkup(bs.dealer_menu_rows(), resize_keyboard=True)
+
+
+def _bset_on(key: str) -> str:
+    return "✅" if bs.is_enabled(key) else "❌"
+
+
+def _bset_back_home() -> list[InlineKeyboardButton]:
+    return [InlineKeyboardButton("◀️ بازگشت به تنظیمات", callback_data="bset:home")]
+
+
+def admin_bot_settings_home_kb() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton("📱 دکمه‌های منو", callback_data="bset:sec:menu")],
+            [InlineKeyboardButton("🔧 عملیات کانفیگ", callback_data="bset:sec:config")],
+            [InlineKeyboardButton("🆕 ساخت کانفیگ", callback_data="bset:sec:create")],
+            [InlineKeyboardButton("🔄 بروزرسانی خلاصه", callback_data="bset:home")],
+        ]
     )
+
+
+def admin_bot_settings_menu_kb() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    f"{_bset_on(bs.FEAT_CREATE)} ساخت کانفیگ", callback_data="bset:fc"
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    f"{_bset_on(bs.FEAT_RENEW)} تمدید", callback_data="bset:fr"
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    f"{_bset_on(bs.FEAT_CHECK)} بررسی", callback_data="bset:fch"
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    f"{_bset_on(bs.FEAT_ACCOUNT)} حساب من", callback_data="bset:fa"
+                ),
+            ],
+            _bset_back_home(),
+        ]
+    )
+
+
+def admin_bot_settings_config_kb() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    f"{_bset_on(bs.FEAT_CONFIG_TOGGLE)} خاموش / روشن",
+                    callback_data="bset:fct",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    f"{_bset_on(bs.FEAT_CONFIG_DELETE)} حذف کانفیگ",
+                    callback_data="bset:fcd",
+                ),
+            ],
+            _bset_back_home(),
+        ]
+    )
+
+
+def admin_bot_settings_create_kb() -> InlineKeyboardMarkup:
+    cn = bs.CLIENT_NAME_LABELS[bs.get_client_name_mode()]
+    sub = bs.SUB_ID_LABELS[bs.get_sub_id_mode()]
+    lo, hi = bs.get_sub_random_bounds()
+    return InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton(f"📛 نام: {cn[:28]}", callback_data="bset:cn")],
+            [InlineKeyboardButton(f"🔗 ساب: {sub[:28]}", callback_data="bset:sub")],
+            [
+                InlineKeyboardButton(
+                    f"📏 طول ساب تصادفی: {lo}–{hi}", callback_data="bset:slen"
+                ),
+            ],
+            _bset_back_home(),
+        ]
+    )
+
+
+def admin_bot_settings_kb(section: str = "home") -> InlineKeyboardMarkup:
+    if section == "menu":
+        return admin_bot_settings_menu_kb()
+    if section == "config":
+        return admin_bot_settings_config_kb()
+    if section == "create":
+        return admin_bot_settings_create_kb()
+    return admin_bot_settings_home_kb()
 
 
 def cancel_kb() -> ReplyKeyboardMarkup:
@@ -42,15 +135,21 @@ def inbound_choice(inbounds: list[DealerInbound]) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(rows)
 
 
-def config_actions(config_id: int, enabled: bool) -> InlineKeyboardMarkup:
-    toggle = "🔴 خاموش کردن" if enabled else "🟢 روشن کردن"
-    return InlineKeyboardMarkup(
-        [
-            [InlineKeyboardButton(toggle, callback_data=f"cfg_toggle:{config_id}")],
-            [InlineKeyboardButton("🗑 حذف کانفیگ", callback_data=f"cfg_del:{config_id}")],
-            [InlineKeyboardButton("◀️ بازگشت", callback_data="cancel")],
-        ]
-    )
+def config_actions(config_id: int, enabled: bool) -> Optional[InlineKeyboardMarkup]:
+    rows = []
+    if bs.is_enabled(bs.FEAT_CONFIG_TOGGLE):
+        toggle = "🔴 خاموش کردن" if enabled else "🟢 روشن کردن"
+        rows.append(
+            [InlineKeyboardButton(toggle, callback_data=f"cfg_toggle:{config_id}")]
+        )
+    if bs.is_enabled(bs.FEAT_CONFIG_DELETE):
+        rows.append(
+            [InlineKeyboardButton("🗑 حذف کانفیگ", callback_data=f"cfg_del:{config_id}")]
+        )
+    if not rows:
+        return None
+    rows.append([InlineKeyboardButton("◀️ بازگشت", callback_data="cancel")])
+    return InlineKeyboardMarkup(rows)
 
 
 def admin_dealer_actions(dealer_id: int, blocked: bool) -> InlineKeyboardMarkup:

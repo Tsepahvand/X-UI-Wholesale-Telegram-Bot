@@ -35,6 +35,9 @@ temp/
 
 # Runtime output
 nohup.out
+*.sqbpro
+.update-backup/
+.remote-update-backup/
 
 # Local-only — not published to GitHub
 API-DOCS.md

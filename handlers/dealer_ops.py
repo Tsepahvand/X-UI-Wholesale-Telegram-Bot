@@ -1,6 +1,7 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 
+import bot_settings as bs
 import database as db
 from database import DealerConfig
 from handlers.common import CANCEL_TEXT, State, clear_state, require_dealer, set_state
@@ -35,10 +36,17 @@ async def handle_random_command(update: Update, context: ContextTypes.DEFAULT_TY
     dealer, status = require_dealer(update.effective_user.id)
     if status != "ok":
         return
+    if bs.get_client_name_mode() != "ask_or_random":
+        await update.message.reply_text("ℹ️ /random در تنظیمات فعلی غیرفعال است.")
+        return
     if context.user_data.get("state") != State.CREATE_REMARK.value:
         await update.message.reply_text("ℹ️ /random فقط هنگام ساخت کانفیگ کار می‌کند.")
         return
     await _create_remark(update, context, dealer, "/random")
+
+
+def _feature_disabled_msg(feature: str) -> str:
+    return f"⛔ بخش «{feature}» توسط ادمین غیرفعال شده است."
 
 
 async def handle_dealer_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
@@ -56,16 +64,26 @@ async def handle_dealer_message(update: Update, context: ContextTypes.DEFAULT_TY
         await update.message.reply_text("انصراف.", reply_markup=dealer_menu())
         return True
 
-    if state_val is None and text in ("🆕 ساخت", "♻️ تمدید", "🔎 بررسی", "👤 حساب من"):
-        if text == "🆕 ساخت":
-            return await _start_create(update, context, dealer)
-        if text == "♻️ تمدید":
-            return await _start_renew(update, context)
-        if text == "🔎 بررسی":
-            return await _start_check(update, context)
-        if text == "👤 حساب من":
-            return await _show_account(update, dealer)
-        return True
+    if state_val is None:
+        menu_map = {
+            "🆕 ساخت": (bs.FEAT_CREATE, "ساخت"),
+            "♻️ تمدید": (bs.FEAT_RENEW, "تمدید"),
+            "🔎 بررسی": (bs.FEAT_CHECK, "بررسی"),
+            "👤 حساب من": (bs.FEAT_ACCOUNT, "حساب من"),
+        }
+        if text in menu_map:
+            feat_key, label = menu_map[text]
+            if not bs.is_enabled(feat_key):
+                await update.message.reply_text(_feature_disabled_msg(label))
+                return True
+            if text == "🆕 ساخت":
+                return await _start_create(update, context, dealer)
+            if text == "♻️ تمدید":
+                return await _start_renew(update, context)
+            if text == "🔎 بررسی":
+                return await _start_check(update, context)
+            if text == "👤 حساب من":
+                return await _show_account(update, dealer)
 
     if state_val == State.CREATE_GB.value:
         return await _create_gb(update, context, dealer, text)
@@ -131,37 +149,49 @@ async def _create_gb(update, context, dealer, text):
 
     draft["gb"] = gb
     draft["bytes"] = bytes_needed
+
+    if bs.should_skip_name_prompt():
+        display_name = bs.random_display_name_for_dealer(dealer.id)
+        return await _finalize_create(update, context, dealer, display_name)
+
     set_state(context, State.CREATE_REMARK)
-    await update.message.reply_text(
-        "📛 نام کانفیگ را وارد کنید:\n"
-        "• همین نام در لینک نمایش داده می‌شود\n"
-        "• تکراری بودن فقط بین کانفیگ‌های خودتان چک می‌شود\n"
-        "• برای نام تصادفی: /random"
-    )
+    await update.message.reply_text(bs.create_remark_prompt())
     return True
 
 
 async def _create_remark(update, context, dealer, text):
-    draft = context.user_data["draft"]
-    inbound_id = draft["inbound_id"]
-    bytes_needed = draft["bytes"]
-
+    mode = bs.get_client_name_mode()
     if text.strip().lower() == "/random":
+        if mode != "ask_or_random":
+            await update.message.reply_text("❌ /random در این حالت مجاز نیست.")
+            return True
         display_name = random_client_name()
     else:
         display_name = normalize_client_name(text)
         if not display_name:
+            hint = " یا /random بزنید." if mode == "ask_or_random" else "."
             await update.message.reply_text(
-                "❌ نام نامعتبر. فقط حروف، عدد، . _ - مجاز است.\n"
-                "یا /random بزنید."
+                f"❌ نام نامعتبر. فقط حروف، عدد، . _ - مجاز است.{hint}"
             )
             return True
 
     if db.dealer_config_name_exists(dealer.id, display_name):
+        hint = " یا /random بزنید." if mode == "ask_or_random" else "."
         await update.message.reply_text(
-            f"❌ نام «{display_name}» را قبلاً ساخته‌اید.\n"
-            "نام دیگری وارد کنید یا /random بزنید."
+            f"❌ نام «{display_name}» را قبلاً ساخته‌اید.{hint}"
         )
+        return True
+
+    return await _finalize_create(update, context, dealer, display_name)
+
+
+async def _finalize_create(update, context, dealer, display_name: str):
+    draft = context.user_data.get("draft") or {}
+    inbound_id = draft.get("inbound_id")
+    bytes_needed = draft.get("bytes")
+    if not inbound_id or not bytes_needed:
+        clear_state(context)
+        await update.message.reply_text("❌ جلسه ساخت منقضی شد. دوباره شروع کنید.")
         return True
 
     panel_email = to_panel_email(display_name)
@@ -185,8 +215,8 @@ async def _create_remark(update, context, dealer, text):
     days_label = db.format_config_days_label(ib.config_days)
 
     try:
+        sub_id = bs.resolve_sub_id(dealer.id, display_name)
         uuid = panel.new_uuid()
-        sub_id = display_name
         panel.add_client(
             inbound_id, panel_email, uuid, sub_id, bytes_needed, expiry_time_ms=expiry_ms
         )
@@ -205,13 +235,16 @@ async def _create_remark(update, context, dealer, text):
         db.add_config(cfg)
 
         clear_state(context)
+        sub_note = f" | ساب: `{sub_id}`" if sub_id != display_name else ""
         expiry_note = (
             f"اعتبار: {days_label} (از اولین اتصال)"
             if ib.config_days > 0
             else f"اعتبار: {days_label}"
         )
         await update.message.reply_text(
-            f"✅ کانفیگ «{display_name}» ساخته شد ({expiry_note}) — در حال ارسال لینک‌ها...",
+            f"✅ کانفیگ «{display_name}» ساخته شد ({expiry_note}){sub_note}\n"
+            "در حال ارسال لینک‌ها...",
+            parse_mode="Markdown",
             reply_markup=dealer_menu(),
         )
         try:
@@ -231,13 +264,26 @@ async def _create_remark(update, context, dealer, text):
     except PanelError as e:
         db.release_quota(dealer.id, inbound_id, bytes_needed)
         if is_duplicate_error(str(e)):
-            set_state(context, State.CREATE_REMARK)
-            await update.message.reply_text(
-                "❌ این نام در پنل هم تکراری است. نام دیگری بفرستید یا /random"
-            )
+            if bs.should_skip_name_prompt():
+                await update.message.reply_text(
+                    "❌ تداخل نام در پنل. دوباره «ساخت» را بزنید.",
+                    reply_markup=dealer_menu(),
+                )
+                clear_state(context)
+            else:
+                set_state(context, State.CREATE_REMARK)
+                hint = " یا /random" if bs.get_client_name_mode() == "ask_or_random" else ""
+                await update.message.reply_text(
+                    f"❌ این نام در پنل هم تکراری است. نام دیگری بفرستید{hint}"
+                )
         else:
             clear_state(context)
             await update.message.reply_text(f"❌ {e}", reply_markup=dealer_menu())
+
+    except RuntimeError as e:
+        db.release_quota(dealer.id, inbound_id, bytes_needed)
+        clear_state(context)
+        await update.message.reply_text(f"❌ {e}", reply_markup=dealer_menu())
 
     except Exception as e:
         db.release_quota(dealer.id, inbound_id, bytes_needed)
@@ -414,10 +460,16 @@ async def handle_dealer_callback(update: Update, context: ContextTypes.DEFAULT_T
         return True
 
     if data.startswith("cfg_toggle:"):
+        if not bs.is_enabled(bs.FEAT_CONFIG_TOGGLE):
+            await query.message.reply_text(_feature_disabled_msg("خاموش/روشن"))
+            return True
         config_id = int(data.split(":")[1])
         return await _toggle_config(query, dealer, config_id)
 
     if data.startswith("cfg_del:"):
+        if not bs.is_enabled(bs.FEAT_CONFIG_DELETE):
+            await query.message.reply_text(_feature_disabled_msg("حذف کانفیگ"))
+            return True
         config_id = int(data.split(":")[1])
         await query.message.reply_text(
             "⚠️ حذف کانفیگ؟ حجم باقی‌مانده به سهمیه برمی‌گردد.",
